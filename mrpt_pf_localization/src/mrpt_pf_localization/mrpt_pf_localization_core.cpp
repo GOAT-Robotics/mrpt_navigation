@@ -463,22 +463,32 @@ void PFLocalizationCore::onStateToBeInitialized()
 	const double stdYaw = std::sqrt(pCov(3, 3));
 	const double stdPitch = std::sqrt(pCov(4, 4));
 	const double stdRoll = std::sqrt(pCov(5, 5));
+	// Prevent zero-width relocalization grid if covariance is zero:
+	constexpr double MIN_SIGMA = 0.05;  // 5 cm minimum
+	double clampedStdX = (stdX < MIN_SIGMA) ? MIN_SIGMA : stdX;
+	double clampedStdY = (stdY < MIN_SIGMA) ? MIN_SIGMA : stdY;
 
 	const double nStds = params_.relocalize_num_sigmas * gnss_std_factor;
 
 	const auto pMin = mrpt::math::TPose3D(
-		pMean.x() - nStds * stdX, pMean.y() - nStds * stdY,
+		pMean.x() - nStds * clampedStdX, pMean.y() - nStds * clampedStdY,
 		pMean.z() - nStds * stdZ,  //
 		std::max(-M_PI, pMean.yaw() - nStds * stdYaw),
 		std::max(-M_PI, pMean.pitch() - nStds * stdPitch),
 		std::max(-M_PI, pMean.roll() - nStds * stdRoll));
 
 	const auto pMax = mrpt::math::TPose3D(
-		pMean.x() + nStds * stdX, pMean.y() + nStds * stdY,
+		pMean.x() + nStds * clampedStdX, pMean.y() + nStds * clampedStdY,
 		pMean.z() + nStds * stdZ,  //
 		std::min(M_PI, pMean.yaw() + nStds * stdYaw),
 		std::min(M_PI, pMean.pitch() + nStds * stdPitch),
 		std::min(M_PI, pMean.roll() + nStds * stdRoll));
+
+	MRPT_LOG_INFO_STREAM(
+		"[onStateToBeInitialized] Computed nStds=" << nStds
+		<< " clampedStdX=" << clampedStdX << " clampedStdY=" << clampedStdY
+		<< " => pMin=( " << pMin.x << ", " << pMin.y << " ),"
+		<< " pMax=( " << pMax.x << ", " << pMax.y << " )");
 
 	// two options here:
 	// 1) pure particle filter
@@ -804,6 +814,7 @@ void PFLocalizationCore::onStateRunning()
 			<< " reference_map=" << in->reference_map.contents_summary());
 
 		const auto reloc = mola::RelocalizationICP_SE2::run(*in);
+		MRPT_LOG_INFO_STREAM("Ran relocalization ICP_SE2");
 
 		std::vector<mrpt::math::TPose2D> candidates;
 		reloc.found_poses.visitAllPoses([&](const auto& p)
