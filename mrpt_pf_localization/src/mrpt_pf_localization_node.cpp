@@ -664,7 +664,9 @@ void PFLocalizationNode::publishTF()
 
 	if (!tfMapOdomToPublish_.has_value()) return;
 
-	tf_broadcaster_->sendTransform(*tfMapOdomToPublish_);
+	if (nodeParams_.broadcast_tf){
+		tf_broadcaster_->sendTransform(*tfMapOdomToPublish_);
+	}
 
 	const auto tf_tolerance_1_2 = tf2::durationFromSec(0.5 * nodeParams_.transform_tolerance);
 
@@ -703,6 +705,7 @@ void PFLocalizationNode::useROSLogLevel()
 void PFLocalizationNode::NodeParameters::loadFrom(const mrpt::containers::yaml& cfg)
 {
 	MCP_LOAD_OPT(cfg, rate_hz);
+	MCP_LOAD_OPT(cfg, broadcast_tf);
 	MCP_LOAD_OPT(cfg, transform_tolerance);
 	MCP_LOAD_OPT(cfg, no_update_tolerance);
 	MCP_LOAD_OPT(cfg, no_inputs_tolerance);
@@ -752,6 +755,8 @@ void PFLocalizationNode::updateEstimatedTwist()
 	const double dt = mrpt::system::timeDifference(*prevStamp_, curStamp);
 
 	const double max_time_to_use_velocity_model = 5.0;	// [s]
+
+	if (dt < 0.0) return; //return and donot assert if dt is negative
 
 	if (dt < max_time_to_use_velocity_model)
 	{

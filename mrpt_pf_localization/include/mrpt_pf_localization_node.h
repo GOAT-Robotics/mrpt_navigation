@@ -72,6 +72,9 @@ class PFLocalizationNode : public rclcpp::Node
 		std::string odom_frame_id = "odom";
 		std::string global_frame_id = "map";
 
+		// publish tf / not
+		bool broadcast_tf = true;
+
 		std::string topic_map = "/mrpt_map/metric_map";
 		std::string topic_initialpose = "/initialpose";
 		std::string topic_odometry = "/odom";
