@@ -56,6 +56,7 @@ target_link_libraries(${PROJECT_NAME}_core
   mrpt::gui
   mrpt::slam
   mrpt::ros2bridge
+  mola::mp2p_icp
   mola::mp2p_icp_map
   mola::mp2p_icp_filters
 )
