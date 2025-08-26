@@ -512,22 +512,44 @@ void PFLocalizationCore::onStateToBeInitialized()
 			gridMap && _.pdf2d)
 		{
 			// initialize over free space only:
-			try
-			{
-				const float gridFreenessThreshold = 0.7f;
-				_.pdf2d->resetUniformFreeSpace(
-					gridMap.get(), gridFreenessThreshold, initParticleCount, pMin.x, pMax.x, pMin.y,
-					pMax.y, pMin.yaw, pMax.yaw);
-
-				initDone = true;
+			const float mapRes = gridMap->getResolution();
+			const float mapmaxX = gridMap->getXMax();
+			const float mapminX = gridMap->getXMin();
+			const float mapmaxY = gridMap->getYMax();
+			const float mapminY = gridMap->getYMin();
+			MRPT_LOG_INFO_STREAM(
+				"[onStateToBeInitialized] Grid map extents: x=[" << mapminX << "," << mapmaxX
+																<< "] y=[" << mapminY << ","
+																<< mapmaxY << "] res=" << mapRes
+				<< " Initial pose position x = " << pMean.x() << " y = " << pMean.y());
+			bool isInside = (pMean.x() >= mapminX && pMean.x() <= mapmaxX) &&
+                			(pMean.y() >= mapminY && pMean.y() <= mapmaxY);
+			if (isInside){
+				try
+				{
+					const float gridFreenessThreshold = 0.7f;
+					MRPT_LOG_INFO_STREAM("[onStateToBeInitialized] Initializing over gridmap free space, area="
+										 << area
+										 << ", initParticleCount=" << initParticleCount);
+					_.pdf2d->resetUniformFreeSpace(
+						gridMap.get(), gridFreenessThreshold, initParticleCount, pMin.x, pMax.x, pMin.y,
+						pMax.y, pMin.yaw, pMax.yaw);
+					MRPT_LOG_INFO_STREAM("[onStateToBeInitialized] Initialization done setting initDone -> True");
+					initDone = true;
+				}
+				catch (const std::exception& e)
+				{
+					MRPT_LOG_ERROR_STREAM(
+						"Error trying to initialize over gridmap empty space, "
+						"falling "
+						"back to provided initialPose. Error: "
+						<< e.what());
+				}
 			}
-			catch (const std::exception& e)
-			{
+			else{
 				MRPT_LOG_ERROR_STREAM(
-					"Error trying to initialize over gridmap empty space, "
-					"falling "
-					"back to provided initialPose. Error: "
-					<< e.what());
+					"Initial area is outside grid map limits, initial pose proceess stopping. Resetting to (0, 0)");
+				initDone = true;
 			}
 		}
 
